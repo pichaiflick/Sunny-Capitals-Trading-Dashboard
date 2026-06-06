@@ -9,7 +9,7 @@ const PORT = 3000;
 // 1. Bump APP_VERSION when you cut a new RELEASE (shows the update banner).
 // 2. Set UPDATE_REPO to your GitHub repo to switch updates ON. Until then it stays off.
 const APP_VERSION   = '1.0.0';
-const UPDATE_REPO   = 'YOUR_GITHUB_USERNAME/sunny-capitals-dashboard'; // e.g. 'sunny/sunny-capitals'
+const UPDATE_REPO   = 'pichaiflick/Sunny-Capitals-Trading-Dashboard';
 const UPDATE_BRANCH = 'main';
 const UPDATE_BASE   = UPDATE_REPO.startsWith('YOUR_GITHUB')
   ? ''  // not configured yet → auto-update + version check stay disabled
