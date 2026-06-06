@@ -12,8 +12,9 @@ rule-adherence scoring, a pre-trade checklist, AI trade reviews, and a daily bri
 Download the **LTS** version from https://nodejs.org and run the installer.
 
 ### 2. Duplicate the Notion template
-Open the Notion template you were sent and click **Duplicate** to copy it into your own
-workspace. It contains two databases: **Accounts** and **Trades**.
+Open the template — **https://app.notion.com/p/37723c91d44d81448ae6c6c795cfbe76** — and
+click **Duplicate** (top-right) to copy it into your own workspace. It contains two
+databases, **Accounts** and **Trades**, already set up with every field the dashboard needs.
 
 ### 3. Run the dashboard
 - **Windows:** double-click `START.bat`
