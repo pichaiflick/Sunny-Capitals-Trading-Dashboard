@@ -4,6 +4,25 @@ A personal trading-journal dashboard that connects live to your own Notion works
 Performance stats, equity curve, session/pair/setup expectancy, prop-firm pass projection,
 rule-adherence scoring, a pre-trade checklist, AI trade reviews, and a daily briefing.
 
+![banner](banner.png)
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/stats-streak.png" width="48%" alt="Stats & Streak">
+  <img src="screenshots/trade-log.png" width="48%" alt="Trade Log">
+</p>
+<p align="center">
+  <img src="screenshots/analysis-data-quality.png" width="48%" alt="Analysis — Data Quality & RR Scatter">
+  <img src="screenshots/analysis-expectancy.png" width="48%" alt="Analysis — Setup & Pair Expectancy">
+</p>
+<p align="center">
+  <img src="screenshots/analysis-rule-adherence.png" width="48%" alt="Analysis — Rule Adherence">
+  <img src="screenshots/ai-review.png" width="48%" alt="AI Trade Review">
+</p>
+
 ---
 
 ## Quick start (3 steps)
