@@ -1,0 +1,5 @@
+# Personal config — contains your Notion token and Anthropic API key. Never share or commit this.
+config.json
+
+# Saved AI review output (personal trading data)
+last_review.json
