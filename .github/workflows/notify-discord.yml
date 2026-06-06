@@ -1,0 +1,45 @@
+name: Notify Discord on update
+
+# Posts a message to your Discord channel whenever you push to main
+# or publish a release. Requires a repo secret called DISCORD_WEBHOOK.
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send Discord message
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "No DISCORD_WEBHOOK secret set — skipping."
+            exit 0
+          fi
+
+          VERSION=$(jq -r '.version // "?"' version.json 2>/dev/null || echo "?")
+
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TITLE="🚀 Sunny Capitals ${{ github.event.release.tag_name }} released"
+            DESC=$(printf '%s' "${{ github.event.release.body }}")
+            URL="${{ github.event.release.html_url }}"
+          else
+            TITLE="📈 Sunny Capitals updated · v${VERSION}"
+            DESC=$(git log -1 --pretty=%B)
+            URL="https://github.com/${{ github.repository }}"
+          fi
+
+          # Build a safe JSON payload (handles quotes/newlines) and send it
+          jq -nc \
+            --arg t "$TITLE" \
+            --arg d "$DESC" \
+            --arg u "$URL" \
+            '{embeds:[{title:$t, description:($d|.[0:1800]), url:$u, color:58784}]}' \
+          | curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK"
