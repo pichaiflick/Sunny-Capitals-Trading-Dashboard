@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history + tags so we can see what changed
 
       - name: Send Discord message
         env:
@@ -28,6 +30,8 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
           RELEASE_BODY: ${{ github.event.release.body }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         run: |
           if [ -z "$WEBHOOK" ]; then
             echo "No DISCORD_WEBHOOK secret set — skipping."
@@ -35,6 +39,35 @@ jobs:
           fi
 
           BANNER="https://raw.githubusercontent.com/$REPO/main/banner.png"
+
+          # ── Work out what changed, so we can tell users whether they need to
+          #    re-download or whether it just auto-applies. Only dashboard.html
+          #    auto-updates on launch; server.js / setup.html / launch scripts
+          #    do NOT, so those require a fresh download.
+          CHANGED=""
+          if [ "$EVENT_NAME" = "release" ]; then
+            PREV_TAG=$(git tag --sort=-creatordate | grep -vx "$RELEASE_TAG" | head -n1)
+            [ -n "$PREV_TAG" ] && CHANGED=$(git diff --name-only "$PREV_TAG" "$RELEASE_TAG" 2>/dev/null)
+          else
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+              CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null)
+            else
+              CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null)
+            fi
+          fi
+
+          # Remove the files that DON'T require a re-download (the auto-updated UI
+          # plus docs/meta/assets). If anything is left, a re-download is needed.
+          MEANINGFUL=$(printf '%s\n' "$CHANGED" | grep -vE '^(dashboard\.html|version\.json|README\.md|\.gitignore|banner\.png|screenshots/|\.github/|.*\.pdf|DISCORD-POST\.txt|PUSH-UPDATES\.md|BUILD-shippable\.)' || true)
+
+          if [ -z "$CHANGED" ]; then
+            # Couldn't determine what changed (e.g. first release) — play it safe.
+            UPDATE_MSG="⬇️ Re-download the latest build to get this update"
+          elif [ -n "$MEANINGFUL" ]; then
+            UPDATE_MSG="⬇️ Re-download the latest build — this update isn't auto-applied"
+          else
+            UPDATE_MSG="✅ Auto-applies on your next launch — nothing to do"
+          fi
 
           if [ "$EVENT_NAME" = "release" ]; then
             TAG="$RELEASE_TAG"
@@ -46,6 +79,7 @@ jobs:
               --arg d "$NOTES" \
               --arg u "$URL" \
               --arg img "$BANNER" \
+              --arg m "$UPDATE_MSG" \
               '{username:"Sunny Capitals",
                 embeds:[{
                   title:$t,
@@ -55,7 +89,7 @@ jobs:
                   image:{url:$img},
                   fields:[
                     {name:"📦 Download", value:("[Get the latest build]("+$u+")"), inline:true},
-                    {name:"🔄 Updating", value:"Dashboard UI auto-updates · re-download for the full update", inline:true}
+                    {name:"🔄 Updating", value:$m, inline:true}
                   ],
                   footer:{text:"Sunny Capitals · Trading Dashboard"}
                 }]}')
@@ -67,13 +101,14 @@ jobs:
               --arg t "📈 Sunny Capitals updated · v$VER" \
               --arg d "$MSG" \
               --arg u "$URL" \
+              --arg m "$UPDATE_MSG" \
               '{username:"Sunny Capitals",
                 embeds:[{
                   title:$t,
                   description:($d|.[0:1500]),
                   url:$u,
                   color:58784,
-                  footer:{text:"Dashboard UI auto-updates on next launch · re-download for backend changes"}
+                  footer:{text:$m}
                 }]}')
           fi
 
