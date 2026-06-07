@@ -83,6 +83,15 @@ can tell you — see the **Data Quality** panel on the Analysis page.
 
 ---
 
+## Development Disclosure
+
+This project was developed using **Cowork**, an AI-powered development tool by Anthropic.
+The source code was implemented entirely by the AI system. All conceptual design, product
+requirements, feature decisions, and overall project direction were defined and overseen
+by the author.
+
+---
+
 ## Troubleshooting
 
 **"Node.js is not installed"** → install it from https://nodejs.org, then run START again.
