@@ -1,7 +1,8 @@
 name: Notify Discord on update
 
-# Posts a message to your Discord channel whenever you push to main
-# or publish a release. Requires a repo secret called DISCORD_WEBHOOK.
+# Posts to your Discord channel when you push to main (small update note)
+# or publish a Release (a polished announcement with the banner).
+# Requires a repo secret called DISCORD_WEBHOOK.
 
 on:
   push:
@@ -17,29 +18,63 @@ jobs:
 
       - name: Send Discord message
         env:
+          # All GitHub-context values are passed through env vars (never inlined
+          # into the script with ${{ }}) so untrusted text — especially a release
+          # body — can't be interpreted as shell commands. See:
+          # https://docs.github.com/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
         run: |
           if [ -z "$WEBHOOK" ]; then
             echo "No DISCORD_WEBHOOK secret set — skipping."
             exit 0
           fi
 
-          VERSION=$(jq -r '.version // "?"' version.json 2>/dev/null || echo "?")
+          BANNER="https://raw.githubusercontent.com/$REPO/main/banner.png"
 
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TITLE="🚀 Sunny Capitals ${{ github.event.release.tag_name }} released"
-            DESC=$(printf '%s' "${{ github.event.release.body }}")
-            URL="${{ github.event.release.html_url }}"
+          if [ "$EVENT_NAME" = "release" ]; then
+            TAG="$RELEASE_TAG"
+            URL="$RELEASE_URL"
+            NOTES="$RELEASE_BODY"
+            [ -z "$NOTES" ] && NOTES="A new version of Sunny Capitals is available."
+            PAYLOAD=$(jq -nc \
+              --arg t "🚀 Sunny Capitals $TAG is here" \
+              --arg d "$NOTES" \
+              --arg u "$URL" \
+              --arg img "$BANNER" \
+              '{username:"Sunny Capitals",
+                embeds:[{
+                  title:$t,
+                  description:($d|.[0:1800]),
+                  url:$u,
+                  color:58784,
+                  image:{url:$img},
+                  fields:[
+                    {name:"📦 Download", value:("[Get the latest build]("+$u+")"), inline:true},
+                    {name:"🔄 Auto-update", value:"Applied on next launch", inline:true}
+                  ],
+                  footer:{text:"Sunny Capitals · Trading Dashboard"}
+                }]}')
           else
-            TITLE="📈 Sunny Capitals updated · v${VERSION}"
-            DESC=$(git log -1 --pretty=%B)
-            URL="https://github.com/${{ github.repository }}"
+            VER=$(jq -r '.version // "?"' version.json 2>/dev/null || echo "?")
+            MSG=$(git log -1 --pretty=%B)
+            URL="https://github.com/$REPO"
+            PAYLOAD=$(jq -nc \
+              --arg t "📈 Sunny Capitals updated · v$VER" \
+              --arg d "$MSG" \
+              --arg u "$URL" \
+              '{username:"Sunny Capitals",
+                embeds:[{
+                  title:$t,
+                  description:($d|.[0:1500]),
+                  url:$u,
+                  color:58784,
+                  footer:{text:"Auto-applied on users next launch"}
+                }]}')
           fi
 
-          # Build a safe JSON payload (handles quotes/newlines) and send it
-          jq -nc \
-            --arg t "$TITLE" \
-            --arg d "$DESC" \
-            --arg u "$URL" \
-            '{embeds:[{title:$t, description:($d|.[0:1800]), url:$u, color:58784}]}' \
-          | curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK"
+          curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
