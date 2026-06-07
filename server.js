@@ -8,7 +8,7 @@ const PORT = 3000;
 // ══ App version + auto-update ════════════════════════════
 // 1. Bump APP_VERSION when you cut a new RELEASE (shows the update banner).
 // 2. Set UPDATE_REPO to your GitHub repo to switch updates ON. Until then it stays off.
-const APP_VERSION   = '1.0.0';
+const APP_VERSION   = '1.0.1';
 const UPDATE_REPO   = 'pichaiflick/Sunny-Capitals-Trading-Dashboard';
 const UPDATE_BRANCH = 'main';
 const UPDATE_BASE   = UPDATE_REPO.startsWith('YOUR_GITHUB')
@@ -215,6 +215,13 @@ async function resolvePageName(pageId) {
 }
 
 async function fetchAllTrades() {
+  // Clear per-fetch caches so account renames / firm / limit edits made in
+  // Notion are reflected on the next ⟳ Refresh instead of persisting (stale)
+  // for the whole life of the server process.
+  for (const k of Object.keys(nameCache)) delete nameCache[k];
+  for (const k of Object.keys(firmCache)) delete firmCache[k];
+  global.acctMetaCache = {};
+
   let allPages = [];
   let cursor = null;
   do {
