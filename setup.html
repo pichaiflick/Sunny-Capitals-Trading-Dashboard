@@ -202,9 +202,9 @@ h1{font-size:1.55rem;font-weight:800;margin-bottom:.45rem;line-height:1.2;}
       </div>
 
       <div class="field">
-        <label>Your Name <span class="optional">(optional)</span></label>
-        <input type="text" id="user-name" placeholder="e.g. Sundeep" autocomplete="off">
-        <div class="field-hint">Personalises your dashboard header</div>
+        <label>Dashboard Name <span class="optional">(optional)</span></label>
+        <input type="text" id="user-name" placeholder="e.g. Sundeep or Acme Capital" autocomplete="off">
+        <div class="field-hint">Sets your dashboard title/logo and welcome greeting. You can change it later in Settings.</div>
       </div>
 
       <div class="status-box" id="db-status"></div>
@@ -416,6 +416,18 @@ async function saveConfig(skipAI) {
     });
     const data = await res.json();
     if (data.success) {
+      // Seed the dashboard's own branding + greeting via same-origin localStorage,
+      // so the name typed here shows up immediately — in the logo/title AND the
+      // welcome greeting — without having to re-enter it in Settings.
+      if (userName) {
+        try {
+          localStorage.setItem('sc-username', userName);
+          let s = {};
+          try { s = JSON.parse(localStorage.getItem('sc-settings') || '{}'); } catch(e) {}
+          s.name = userName;
+          localStorage.setItem('sc-settings', JSON.stringify(s));
+        } catch(e) {}
+      }
       // Show done screen
       if (key) {
         document.getElementById('ai-feature').style.display = 'flex';
