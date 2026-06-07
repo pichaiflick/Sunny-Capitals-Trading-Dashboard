@@ -55,7 +55,7 @@ jobs:
                   image:{url:$img},
                   fields:[
                     {name:"📦 Download", value:("[Get the latest build]("+$u+")"), inline:true},
-                    {name:"🔄 Auto-update", value:"Applied on next launch", inline:true}
+                    {name:"🔄 Updating", value:"Dashboard UI auto-updates · re-download for the full update", inline:true}
                   ],
                   footer:{text:"Sunny Capitals · Trading Dashboard"}
                 }]}')
@@ -73,7 +73,7 @@ jobs:
                   description:($d|.[0:1500]),
                   url:$u,
                   color:58784,
-                  footer:{text:"Auto-applied on users next launch"}
+                  footer:{text:"Dashboard UI auto-updates on next launch · re-download for backend changes"}
                 }]}')
           fi
 
