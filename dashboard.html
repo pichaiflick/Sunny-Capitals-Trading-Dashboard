@@ -1684,6 +1684,7 @@ body.privacy .kpi-val:hover,body.privacy #h-pnl:hover,body.privacy .gauge-curren
             <button class="set-preset" data-combo="steel" onclick="applyCombo('steel',this)"><span class="sw" style="background:linear-gradient(135deg,#f8f9fa 0%,#ced4da 45%,#495057 100%)"></span>Light Steel</button>
             <button class="set-preset" data-combo="classic" onclick="applyCombo('classic',this)"><span class="sw" style="background:linear-gradient(135deg,#12121a 0%,#1a1a26 45%,#00e5a0 100%)"></span>Classic</button>
             <button class="set-preset" data-combo="deepsteel" onclick="applyCombo('deepsteel',this)"><span class="sw" style="background:linear-gradient(135deg,#0d1b2a 0%,#415a77 55%,#778da9 100%)"></span>Deep Steel</button>
+            <button class="set-preset" data-combo="purplemist" onclick="applyCombo('purplemist',this)"><span class="sw" style="background:linear-gradient(135deg,#000000 0%,#380356 45%,#b000b2 100%)"></span>Purple Mist</button>
           </div>
         </div>
       </div>
@@ -3937,6 +3938,13 @@ const COMBOS = {
     '--text':'#e0e1dd','--text2':'#9aa8bb','--text3':'#6b7a90',
     '--green':'#778da9','--red':'#5a6b82','--gold':'#778da9','--blue':'#778da9','--purple':'#9aa8bb',
     '--on-accent':'#0d1b2a'
+  }},
+  purplemist: { mode:'dark', vars:{
+    '--bg':'#000000','--bg2':'#160020','--bg3':'#250438','--bg4':'#380356',
+    '--border':'rgba(176,0,178,0.14)','--border2':'rgba(176,0,178,0.30)',
+    '--text':'#f3e9f7','--text2':'#bb8fcb','--text3':'#7a5a8a',
+    '--green':'#b000b2','--red':'#6b0078','--gold':'#93009c','--blue':'#93009c','--purple':'#b000b2',
+    '--on-accent':'#ffffff'
   }}
 };
 const COMBO_VARS = ['--bg','--bg2','--bg3','--bg4','--border','--border2','--text','--text2','--text3','--green','--red','--gold','--blue','--purple','--on-accent'];
