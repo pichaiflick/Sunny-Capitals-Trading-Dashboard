@@ -83,15 +83,6 @@ can tell you — see the **Data Quality** panel on the Analysis page.
 
 ---
 
-## Development Disclosure
-
-This project was developed using **Cowork**, an AI-powered development tool by Anthropic.
-The source code was implemented entirely by the AI system. All conceptual design, product
-requirements, feature decisions, and overall project direction were defined and overseen
-by the author.
-
----
-
 ## Troubleshooting
 
 **"Node.js is not installed"** → install it from https://nodejs.org, then run START again.
@@ -119,3 +110,10 @@ Profit Target, Max Drawdown %) and set its Status to Active.
 | `config.example.json` | Template for `config.json` (safe to share) |
 | `config.json` | **Your** private settings — never share |
 | `START.bat` / `START.sh` | Launch scripts |
+
+---
+
+
+## License
+
+[MIT](LICENSE) © 2026 pichaiflick
