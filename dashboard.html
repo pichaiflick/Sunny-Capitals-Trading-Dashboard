@@ -2247,7 +2247,7 @@ function renderPairs(s){
   el('pair-body').innerHTML=rows.map(([nm,d])=>{
     const wr=(d.w/d.n*100).toFixed(1);
     const avgRR=d.rrs.length?(d.rrs.reduce((s,r)=>s+r,0)/d.rrs.length).toFixed(2):'—';
-    return `<tr><td><strong>${nm}</strong></td><td>${d.n}</td>
+    return `<tr><td><strong>${escHtml(nm)}</strong></td><td>${d.n}</td>
       <td style="color:${parseFloat(wr)>=50?'var(--green)':'var(--red)'}">${wr}%</td>
       <td style="color:${parseFloat(avgRR)>=0?'var(--green)':'var(--red)'}">${avgRR}${avgRR!=='—'?'R':''}</td>
       <td style="color:${d.pnl>=0?'var(--green)':'var(--red)'}">${d.pnl>=0?'+':''}$${d.pnl.toFixed(2)}</td></tr>`;
@@ -2259,7 +2259,7 @@ function renderConfluence(s){
   for(const t of s){const list=Array.isArray(t.confluenceList)?t.confluenceList:[];list.forEach(tag=>{if(!tag)return;if(!tags[tag])tags[tag]={n:0,w:0,pnl:0};tags[tag].n++;if(t.outcome==='Win')tags[tag].w++;tags[tag].pnl+=t.pnl;});}
   const rows=Object.entries(tags).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
   if(!rows.length){el('conf-bars').innerHTML='<p style="color:var(--text3);font-size:.78rem;font-family:var(--mono)">No confluence data yet</p>';return;}
-  el('conf-bars').innerHTML=rows.map(([nm,d])=>{const wr=d.w/d.n*100;return `<div class="pbar-wrap"><div class="pbar-lbl" title="${nm}">${nm.length>14?nm.slice(0,12)+'…':nm}</div><div class="pbar-track"><div class="pbar-fill" style="width:${wr}%;background:${wr>=50?'var(--green)':'var(--red)'}"></div></div><div class="pbar-val">${wr.toFixed(0)}%</div></div>`;}).join('');
+  el('conf-bars').innerHTML=rows.map(([nm,d])=>{const wr=d.w/d.n*100;return `<div class="pbar-wrap"><div class="pbar-lbl" title="${escHtml(nm)}">${escHtml(nm.length>14?nm.slice(0,12)+'…':nm)}</div><div class="pbar-track"><div class="pbar-fill" style="width:${wr}%;background:${wr>=50?'var(--green)':'var(--red)'}"></div></div><div class="pbar-val">${wr.toFixed(0)}%</div></div>`;}).join('');
 }
 
 // ── Expectancy matrices (setup / pair / session) ─────────
@@ -2467,7 +2467,7 @@ function renderMistakes(s){
   const max=rows[0][1].n;
   el('mistake-bars').innerHTML=rows.map(([nm,d])=>`
     <div class="pbar-wrap">
-      <div class="pbar-lbl" title="${nm}">${nm.length>14?nm.slice(0,12)+'…':nm}</div>
+      <div class="pbar-lbl" title="${escHtml(nm)}">${escHtml(nm.length>14?nm.slice(0,12)+'…':nm)}</div>
       <div class="pbar-track"><div class="pbar-fill" style="width:${d.n/max*100}%;background:var(--gold)"></div></div>
       <div class="pbar-val">${d.n}x</div>
     </div>`).join('');
@@ -2493,7 +2493,7 @@ function renderBestWorst(s){
 function renderStreak(s){
   el('streak-dots').innerHTML=s.slice(-60).map(t=>`
     <div class="sdot ${t.outcome==='Win'?'w':t.outcome==='BE'?'b':'l'}"
-      title="${t.date} · ${t.pair} · ${t.outcome} · $${t.pnl.toFixed(2)}"></div>`).join('');
+      title="${t.date} · ${escHtml(t.pair)} · ${t.outcome} · $${t.pnl.toFixed(2)}"></div>`).join('');
 }
 
 function renderRiskChart(s){
@@ -3041,8 +3041,8 @@ async function toggleTradeImages(row, pageId, rowId) {
       return;
     }
     const imgs = data.images.map(img =>
-      `<img src="${img.url}" alt="${img.caption||'Trade chart'}"
-            title="${img.caption||'Click to enlarge'}"
+      `<img src="${escHtml(img.url)}" alt="${escHtml(img.caption||'Trade chart')}"
+            title="${escHtml(img.caption||'Click to enlarge')}"
             onclick="event.stopPropagation(); openLightbox(this.src)"
             onerror="this.style.display='none'">`
     ).join('');
@@ -3051,7 +3051,7 @@ async function toggleTradeImages(row, pageId, rowId) {
       ? `<div style="width:100%;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
           ${data.notes.map(n =>
             `<p style="font-family:var(--mono);font-size:.75rem;color:var(--text2);
-                       line-height:1.6;margin-bottom:.3rem">${n}</p>`
+                       line-height:1.6;margin-bottom:.3rem">${escHtml(n)}</p>`
           ).join('')}
         </div>`
       : '';
@@ -3059,7 +3059,7 @@ async function toggleTradeImages(row, pageId, rowId) {
     imgDiv.innerHTML = imgs + notesHtml;
     if (!imgs && !notesHtml) imgDiv.innerHTML = '<span class="img-none">No images or notes on this trade</span>';
   } catch(e) {
-    imgDiv.innerHTML = `<span class="img-none">Could not load images: ${e.message}</span>`;
+    imgDiv.innerHTML = `<span class="img-none">Could not load images: ${escHtml(e.message)}</span>`;
   }
 }
 
@@ -3831,11 +3831,11 @@ function openReport() {
     ${topMistake ? `
     <div class="report-section">
       <h3>Top Mistake This Week</h3>
-      <div class="report-row"><span>${topMistake[0]}</span><span>${topMistake[1]}x</span></div>
+      <div class="report-row"><span>${escHtml(topMistake[0])}</span><span>${topMistake[1]}x</span></div>
     </div>` : ''}
     <div class="report-section">
       <h3>All Trades</h3>
-      ${reportTrades.map(t=>`<div class="report-row"><span>${t.date} · ${t.pair} · ${t.direction}</span><span style="color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.outcome} · ${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span></div>`).join('')||'<div class="report-row"><span>No trades this week</span><span>—</span></div>'}
+      ${reportTrades.map(t=>`<div class="report-row"><span>${t.date} · ${escHtml(t.pair)} · ${escHtml(t.direction)}</span><span style="color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.outcome} · ${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span></div>`).join('')||'<div class="report-row"><span>No trades this week</span><span>—</span></div>'}
     </div>
   `;
   modal.classList.add('open');
