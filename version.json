@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "notes": "Security: dashboard now binds to localhost only. Fix: Notion account edits refresh without a restart.",
+  "version": "1.0.2",
+  "notes": "New: Health Score, Leak Finder, Skip-Your-Worst, monthly report, Purple Mist theme. Plus security hardening and a name-in-setup fix.",
   "url": "https://github.com/pichaiflick/Sunny-Capitals-Trading-Dashboard/releases/latest"
 }

@@ -1115,7 +1115,10 @@ body.privacy .kpi-val:hover,body.privacy #h-pnl:hover,body.privacy .gauge-curren
         <div class="welcome-greeting" id="welcome-greeting">Good morning ✦</div>
         <div class="welcome-sub" id="welcome-sub">Loading your trading data...</div>
       </div>
-      <button class="report-btn" onclick="openReport()">📄 Weekly Report</button>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="report-btn" onclick="openReport('week')">📄 Weekly Report</button>
+        <button class="report-btn" onclick="openReport('month')">🗓️ Monthly Report</button>
+      </div>
     </div>
 
     <!-- Daily loss warning -->
@@ -1462,6 +1465,29 @@ body.privacy .kpi-val:hover,body.privacy #h-pnl:hover,body.privacy .gauge-curren
     <!-- ════════ PAGE: Analysis ════════ -->
     <div class="page" id="page-analysis">
     <div id="sec-analysis"></div>
+
+    <div class="chart-card" style="margin-bottom:2.5rem">
+      <div class="ctitle">💪 Health Score</div>
+      <div class="csub">A single 0–100 read on your trading — blends win rate, profit factor, expectancy, discipline and drawdown control.</div>
+      <div id="health-score" style="padding-top:.75rem"></div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:2.5rem">
+      <div class="ctitle">🩸 Leak Finder</div>
+      <div class="csub">Where your money actually leaks — the pairs, sessions and mistakes costing you the most, worst first.</div>
+      <div style="overflow-x:auto">
+        <table class="inst-table" id="leak-table">
+          <thead><tr><th>Leak</th><th>Type</th><th>Trades</th><th>Win Rate</th><th>Net P&L</th></tr></thead>
+          <tbody id="leak-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:2.5rem">
+      <div class="ctitle">✂️ Skip Your Worst</div>
+      <div class="csub">What your equity curve would look like if you'd cut your single most damaging setup, pair or session.</div>
+      <div id="counterfactual" style="padding-top:.75rem"></div>
+    </div>
 
     <div class="chart-card" style="margin-bottom:2.5rem">
       <div class="ctitle">🔎 Data Quality</div>
@@ -1817,8 +1843,8 @@ body.privacy .kpi-val:hover,body.privacy #h-pnl:hover,body.privacy .gauge-curren
   <!-- Report Modal -->
   <div class="report-modal" id="report-modal">
     <div class="report-modal-card">
-      <h2>📄 Weekly Trading Report</h2>
-      <p>Summary of your trading performance for the last 7 days.</p>
+      <h2 id="report-title">📄 Weekly Trading Report</h2>
+      <p id="report-desc">Summary of your trading performance for the last 7 days.</p>
       <div id="report-content"></div>
       <div class="report-modal-btns">
         <button class="btn-pdf" onclick="downloadReport()">⬇ Download PDF</button>
@@ -2144,6 +2170,9 @@ function render(trades) {
     ['Pairs',       () => renderPairs(sorted)],
     ['Confluence',  () => renderConfluence(sorted)],
     ['Expectancy',  () => renderExpectancy(sorted)],
+    ['HealthScore', () => renderHealthScore(sorted)],
+    ['LeakFinder',  () => renderLeakFinder(sorted)],
+    ['Counterfactual', () => renderCounterfactual(sorted)],
     ['RuleAdherence', () => renderRuleAdherence(sorted)],
     ['DataQuality', () => renderDataQuality(sorted)],
     ['Projection',  () => renderProjection()],
@@ -2314,6 +2343,128 @@ function renderExpectancy(s){
   if(pair) pair.innerHTML=expHTML(expRows(data, t=>[t.pair]), 'No pair data yet.');
   const sess=el('sess-exp-body');
   if(sess) sess.innerHTML=expHTML(expRows(data, t=>[t.session]), 'No session data yet.');
+}
+
+// ── Health Score: one 0–100 composite of trading health ──
+function renderHealthScore(s){
+  const host=el('health-score'); if(!host) return;
+  const live=s.filter(t=>!t.isBacktest);
+  const data=live.length?live:s;
+  if(data.length<5){ host.innerHTML='<p style="color:var(--text3);font-size:.8rem;font-family:var(--mono)">Need at least 5 trades to score.</p>'; return; }
+  const wins=data.filter(t=>t.outcome==='Win');
+  const losses=data.filter(t=>t.outcome==='Loss');
+  const wr=wins.length/data.length*100;
+  const grossW=wins.reduce((a,t)=>a+t.pnl,0);
+  const grossL=Math.abs(losses.reduce((a,t)=>a+t.pnl,0));
+  const pf=grossL>0?grossW/grossL:(grossW>0?3:0);
+  const avgWin=wins.length?grossW/wins.length:0;
+  const avgLoss=losses.length?grossL/losses.length:0;
+  const expc=(wr/100*avgWin)-((1-wr/100)*avgLoss);
+  const clean=data.filter(t=>!t.mistakes||t.mistakes.length===0).length/data.length*100;
+  const totalPnl=data.reduce((a,t)=>a+t.pnl,0);
+  const maxDD=computeMaxDD(data);
+  const recovery=maxDD>0?totalPnl/maxDD:(totalPnl>0?3:0);
+  const clamp=(x)=>Math.max(0,Math.min(100,x));
+  const cWR=clamp(wr/60*100);
+  const cPF=clamp(pf/2*100);
+  const cEXP=clamp(50+(avgLoss>0?expc/avgLoss:(expc>0?1:-1))*25);
+  const cADH=clamp(clean);
+  const cDD=clamp(recovery*25);
+  const score=Math.round(cWR*0.20+cPF*0.25+cEXP*0.25+cADH*0.15+cDD*0.15);
+  const grade=score>=80?'A':score>=65?'B':score>=50?'C':score>=35?'D':'E';
+  const col=score>=65?'var(--green)':score>=50?'var(--gold)':'var(--red)';
+  const comps=[['Win rate',cWR],['Profit factor',cPF],['Expectancy',cEXP],['Discipline',cADH],['Drawdown control',cDD]];
+  host.innerHTML=`
+    <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+      <div style="text-align:center;min-width:120px">
+        <div style="font-size:2.8rem;font-weight:800;line-height:1;color:${col};font-family:var(--mono)">${score}</div>
+        <div style="font-size:.68rem;color:var(--text3);letter-spacing:.1em;margin-top:.25rem">/ 100 · GRADE ${grade}</div>
+      </div>
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:.55rem">
+        ${comps.map(([lbl,v])=>`
+          <div class="pbar-wrap">
+            <div class="pbar-lbl" title="${escHtml(lbl)}">${escHtml(lbl)}</div>
+            <div class="pbar-track"><div class="pbar-fill" style="width:${Math.round(v)}%;background:${v>=65?'var(--green)':v>=50?'var(--gold)':'var(--red)'}"></div></div>
+            <div class="pbar-val">${Math.round(v)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── Leak Finder: net-negative pairs / sessions / mistakes, worst first ──
+function renderLeakFinder(s){
+  const host=el('leak-body'); if(!host) return;
+  const live=s.filter(t=>!t.isBacktest);
+  const data=live.length?live:s;
+  const groups=[];
+  const add=(type,keyFn)=>{
+    const g={};
+    for(const t of data){ for(const k of keyFn(t)){ if(!k||k==='—')continue; if(!g[k])g[k]={n:0,w:0,pnl:0}; g[k].n++; if(t.outcome==='Win')g[k].w++; g[k].pnl+=t.pnl; } }
+    for(const [nm,d] of Object.entries(g)) groups.push({type,nm,n:d.n,w:d.w,pnl:d.pnl});
+  };
+  add('Pair', t=>[t.pair]);
+  add('Session', t=>[t.session]);
+  add('Mistake', t=>Array.isArray(t.mistakes)?t.mistakes:[]);
+  const leaks=groups.filter(g=>g.pnl<0).sort((a,b)=>a.pnl-b.pnl).slice(0,8);
+  if(!leaks.length){ host.innerHTML='<tr><td colspan="5" style="color:var(--text3);font-family:var(--mono);font-size:.78rem;padding:1rem">No net-negative pairs, sessions or mistakes — nothing leaking. 👍</td></tr>'; return; }
+  host.innerHTML=leaks.map(g=>{
+    const wr=(g.w/g.n*100).toFixed(0);
+    return `<tr>
+      <td style="color:var(--text);font-weight:600">${escHtml(g.nm)}</td>
+      <td style="color:var(--text3)">${g.type}</td>
+      <td>${g.n}</td>
+      <td style="color:${parseFloat(wr)>=50?'var(--green)':'var(--red)'}">${wr}%</td>
+      <td style="color:var(--red);font-weight:700;font-family:var(--mono)">-$${Math.abs(Math.round(g.pnl)).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Two-line equity sparkline (actual vs adjusted), pure SVG ──
+function twoLineSVG(a, b){
+  const all=a.concat(b); const min=Math.min(0,...all), max=Math.max(0,...all);
+  const W=680,H=120,pad=6; const span=(max-min)||1;
+  const pts=(arr)=>arr.map((v,i)=>{const x=arr.length<2?pad:(i/(arr.length-1))*(W-pad*2)+pad; const y=H-pad-((v-min)/span)*(H-pad*2); return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
+  const zeroY=H-pad-((0-min)/span)*(H-pad*2);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:120px;display:block">
+    <line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="var(--border2)" stroke-width="1" stroke-dasharray="4 4"/>
+    <polyline points="${pts(a)}" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="${pts(b)}" fill="none" stroke="var(--green)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ── Skip Your Worst: equity curve with the biggest drag removed ──
+function renderCounterfactual(s){
+  const host=el('counterfactual'); if(!host) return;
+  const live=s.filter(t=>!t.isBacktest).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(live.length<5){ host.innerHTML='<p style="color:var(--text3);font-size:.8rem;font-family:var(--mono)">Need more trades to model this.</p>'; return; }
+  const MINB=4; // a setup/pair/session needs at least this many trades to count as a "drag"
+  const cands=[];
+  const scan=(type,keyFn)=>{ const g={}; for(const t of live){ for(const k of keyFn(t)){ if(!k||k==='—')continue; if(!g[k])g[k]={n:0,pnl:0}; g[k].n++; g[k].pnl+=t.pnl; } } for(const [nm,d] of Object.entries(g)) if(d.n>=MINB && d.pnl<0) cands.push({type,nm,n:d.n,pnl:d.pnl,keyFn}); };
+  scan('setup', t=>Array.isArray(t.confluenceList)?t.confluenceList:[]);
+  scan('pair', t=>[t.pair]);
+  scan('session', t=>[t.session]);
+  const actualTotal=live.reduce((a,t)=>a+t.pnl,0);
+  if(!cands.length){ host.innerHTML=`<p style="color:var(--text2);font-size:.82rem;line-height:1.6">No single setup, pair or session is a net drag with ${MINB}+ trades — nothing obvious to cut. 👍</p>`; return; }
+  const worst=cands.sort((a,b)=>a.pnl-b.pnl)[0];
+  const kept=live.filter(t=>!worst.keyFn(t).includes(worst.nm));
+  const adjTotal=kept.reduce((a,t)=>a+t.pnl,0);
+  const delta=adjTotal-actualTotal;
+  const cum=(arr)=>{let e=0;return arr.map(t=>e+=t.pnl);};
+  const spark=twoLineSVG(cum(live), cum(kept));
+  host.innerHTML=`
+    <div style="margin-bottom:.9rem;font-size:.85rem;line-height:1.7;color:var(--text2)">
+      Your biggest drag is <strong style="color:var(--red)">${escHtml(worst.nm)}</strong>
+      <span style="color:var(--text3)">(${worst.type}, ${worst.n} trades, -$${Math.abs(Math.round(worst.pnl)).toLocaleString()})</span>.
+      Cut it and your net goes from
+      <strong style="color:${actualTotal>=0?'var(--green)':'var(--red)'}">${actualTotal>=0?'+':''}$${Math.round(actualTotal).toLocaleString()}</strong>
+      to <strong style="color:${adjTotal>=0?'var(--green)':'var(--red)'}">${adjTotal>=0?'+':''}$${Math.round(adjTotal).toLocaleString()}</strong>
+      <span style="color:var(--green);font-weight:700">(+$${Math.round(delta).toLocaleString()})</span>.
+    </div>
+    ${spark}
+    <div style="display:flex;gap:1.2rem;margin-top:.5rem;font-size:.72rem;color:var(--text3)">
+      <span><span style="color:var(--text2)">━</span> Actual</span>
+      <span><span style="color:var(--green)">━</span> Without ${escHtml(worst.nm)}</span>
+    </div>`;
 }
 
 // ── Rule adherence: clean trades vs trades with a logged mistake ──
@@ -3791,11 +3942,14 @@ document.head.appendChild(confStyle);
 // ── Weekly Report ─────────────────────────────────────────
 let reportTrades = [];
 
-function openReport() {
+function openReport(period) {
   const modal = document.getElementById('report-modal');
   if (!modal) return;
+  const isMonth = period === 'month';
+  reportIsMonth = isMonth;
+  const days = isMonth ? 30 : 7;
 
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-days);
   reportTrades = allTrades.filter(t => new Date(t.date) >= weekAgo);
   
   const wins   = reportTrades.filter(t => t.outcome==='Win');
@@ -3810,9 +3964,12 @@ function openReport() {
 
   const week = `${weekAgo.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
 
+  const rtTitle=document.getElementById('report-title'); if(rtTitle) rtTitle.textContent=(isMonth?'🗓️ Monthly':'📄 Weekly')+' Trading Report';
+  const rtDesc=document.getElementById('report-desc'); if(rtDesc) rtDesc.textContent='Summary of your trading performance for the last '+(isMonth?'30 days':'7 days')+'.';
+
   document.getElementById('report-content').innerHTML = `
     <div class="report-section">
-      <h3>Week of ${week}</h3>
+      <h3>${isMonth ? 'Last 30 days · '+week : 'Week of '+week}</h3>
       <div class="report-row"><span>Total Trades</span><span>${reportTrades.length}</span></div>
       <div class="report-row"><span>Win / Loss / BE</span><span>${wins.length}W · ${losses.length}L · ${bes.length}BE</span></div>
       <div class="report-row"><span>Win Rate</span><span>${reportTrades.length?Math.round(wins.length/reportTrades.length*100):0}%</span></div>
@@ -3830,12 +3987,12 @@ function openReport() {
     </div>
     ${topMistake ? `
     <div class="report-section">
-      <h3>Top Mistake This Week</h3>
+      <h3>Top Mistake</h3>
       <div class="report-row"><span>${escHtml(topMistake[0])}</span><span>${topMistake[1]}x</span></div>
     </div>` : ''}
     <div class="report-section">
       <h3>All Trades</h3>
-      ${reportTrades.map(t=>`<div class="report-row"><span>${t.date} · ${escHtml(t.pair)} · ${escHtml(t.direction)}</span><span style="color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.outcome} · ${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span></div>`).join('')||'<div class="report-row"><span>No trades this week</span><span>—</span></div>'}
+      ${reportTrades.map(t=>`<div class="report-row"><span>${t.date} · ${escHtml(t.pair)} · ${escHtml(t.direction)}</span><span style="color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.outcome} · ${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</span></div>`).join('')||'<div class="report-row"><span>No trades this period</span><span>—</span></div>'}
     </div>
   `;
   modal.classList.add('open');
@@ -3846,7 +4003,9 @@ function closeReport() {
 }
 
 function downloadReport() {
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const isMonth = (typeof reportIsMonth !== 'undefined') && reportIsMonth;
+  const days = isMonth ? 30 : 7;
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-days);
   const week = `${weekAgo.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} - ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
   const wins   = reportTrades.filter(t => t.outcome==='Win');
   const losses = reportTrades.filter(t => t.outcome==='Loss');
@@ -3865,7 +4024,7 @@ function downloadReport() {
   let y = margin;
 
   doc.setFontSize(18); doc.setFont('helvetica','bold');
-  doc.text('Sunny Capitals — Weekly Report', margin, y); y += 20;
+  doc.text('Sunny Capitals — ' + (isMonth ? 'Monthly' : 'Weekly') + ' Report', margin, y); y += 20;
   doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(120);
   doc.text(week, margin, y); y += 24;
   doc.setTextColor(0);
@@ -3905,7 +4064,7 @@ function downloadReport() {
     y += 14;
   });
 
-  doc.save(`sunny-capitals-week-${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`sunny-capitals-${isMonth ? 'month' : 'week'}-${new Date().toISOString().slice(0,10)}.pdf`);
   closeReport();
 }
 
